@@ -789,6 +789,7 @@ function readSettings(){
 /* ---------- arranque ---------- */
 async function boot(){
   $('#redirectUri').textContent = REDIRECT;
+  if (!LS.get('clientId')) LS.set('clientId', '60f9cb0002024bc0a6ba26116f085007');
   if (!LS.get('clientId')){ show('setupScreen'); return; }
   try{ await handleCallback(); }
   catch(e){ show('loginScreen'); const le = $('#loginError'); le.textContent = e.message; le.style.display = ''; return; }
