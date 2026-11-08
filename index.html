@@ -724,6 +724,25 @@ function loadSDK(){
   const s = document.createElement('script'); s.id = 'sdkScript'; s.src = 'https://sdk.scdn.co/spotify-player.js'; s.async = true;
   document.head.appendChild(s);
 }
+let iframeApi = null, embedCtrl = null;
+window.onSpotifyIframeApiReady = a => { iframeApi = a; };
+function loadIframeApi(){
+  if (document.getElementById('ifApi')) return;
+  const s = document.createElement('script'); s.id = 'ifApi'; s.src = 'https://open.spotify.com/embed/iframe-api/v1'; s.async = true;
+  document.head.appendChild(s);
+}
+function embedPreview(t, card){
+  const box = card.querySelector('.player');
+  if (!iframeApi){
+    box.innerHTML = `<iframe class="embed" src="https://open.spotify.com/embed/track/${encodeURIComponent(t.id)}?theme=0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>`;
+    return;
+  }
+  box.innerHTML = '<div style="width:100%"></div>';
+  iframeApi.createController(box.firstChild, { uri: t.uri, width: '100%', height: 80 }, ctrl => {
+    embedCtrl = ctrl;
+    ctrl.addListener('ready', () => { try{ ctrl.play(); }catch{} });
+  });
+}
 function togglePreview(t, card){
   if (playing && playing.id === t.id) stopPreview(); else playPreview(t, card);
 }
@@ -744,8 +763,8 @@ async function playPreview(t, card){
     if (!device) throw new Error('NODEVICE');
     await api('/me/player/play?device_id=' + encodeURIComponent(device), { method:'PUT', body: JSON.stringify({ uris:[t.uri], position_ms: start }) });
   }catch(e){
-    // Plan C: reproductor incrustado
-    card.querySelector('.player').innerHTML = `<iframe class="embed" src="https://open.spotify.com/embed/track/${encodeURIComponent(t.id)}?theme=0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
+    // Plan C: reproductor incrustado de Spotify, intentando que arranque solo
+    embedPreview(t, card);
     return;
   }
   playing = { id: t.id, device };
@@ -756,6 +775,7 @@ async function playPreview(t, card){
 }
 function stopPreview(){
   clearTimeout(previewTimer); clearInterval(progressTimer);
+  if (embedCtrl){ try{ embedCtrl.destroy(); }catch{} embedCtrl = null; }
   if (playing){
     const dev = playing.device; playing = null;
     api('/me/player/pause?device_id=' + encodeURIComponent(dev), { method:'PUT' }).catch(() => {});
@@ -793,7 +813,7 @@ async function boot(){
   try{
     loading('Conectando con Spotify…');
     me = await api('/me');
-    loadSDK();
+    loadSDK(); loadIframeApi();
     await loadPool();
     renderMoods();
   }catch(e){
@@ -841,7 +861,11 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft') decide('nope');
   if (e.key === ' '){ e.preventDefault(); const c = $('#deck .card:not(.back)'); if (c && deck[0]) togglePreview(deck[0], c); }
 });
-if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator){
+  const hadCtrl = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {});
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtrl && !location.search) location.reload(); });
+}
 boot();
 </script>
 </body>
