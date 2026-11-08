@@ -385,7 +385,7 @@ let addedThisMood = 0;
 
 const sources = Object.assign({ liked:true, albums:true, top:true, recent:true, discover:true }, LS.get('sources', {}));
 let disabledPlaylists = new Set(LS.get('disabledPlaylists', []));
-let autoplay = LS.get('autoplay', false);
+let autoplay = LS.get('autoplay2', true);
 
 /* ---------- carga de canciones ---------- */
 async function loadPool(force = false){
@@ -652,12 +652,9 @@ async function decide(dir, dy = 0){
       await apiEither(`/playlists/${target.id}/items`, `/playlists/${target.id}/tracks`,
         { method:'POST', body: JSON.stringify({ uris: [t.uri] }) });
       addedThisMood++; $('#addedCount').textContent = addedThisMood;
-      toast(`Añadida a ${target.name}`, 'Deshacer', undo, 2500);
     }catch(e){
       toast('No se pudo añadir (' + (e.status || e.message) + ')', 'Reintentar', () => retryAdd(t));
     }
-  } else {
-    toast('Descartada para este mood (no se borra de tus playlists)', 'Mejor añadirla', undoAndLike, 3000);
   }
 }
 async function retryAdd(t){
@@ -749,7 +746,6 @@ async function playPreview(t, card){
   }catch(e){
     // Plan C: reproductor incrustado
     card.querySelector('.player').innerHTML = `<iframe class="embed" src="https://open.spotify.com/embed/track/${encodeURIComponent(t.id)}?theme=0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
-    if (e.message === 'NODEVICE') toast('Abre la app de Spotify en el móvil para oír el fragmento desde el estribillo', null, null, 4000);
     return;
   }
   playing = { id: t.id, device };
@@ -781,7 +777,7 @@ function openSettings(){
 function readSettings(){
   document.querySelectorAll('[data-src]').forEach(c => sources[c.dataset.src] = c.checked);
   LS.set('sources', sources);
-  autoplay = $('#autoplayToggle').checked; LS.set('autoplay', autoplay);
+  autoplay = $('#autoplayToggle').checked; LS.set('autoplay2', autoplay);
   disabledPlaylists = new Set([...document.querySelectorAll('[data-pl]')].filter(c => !c.checked).map(c => c.dataset.pl));
   LS.set('disabledPlaylists', [...disabledPlaylists]);
 }
