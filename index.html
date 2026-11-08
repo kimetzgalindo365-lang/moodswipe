@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0d0d12">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Moodswipe">
+<title>Moodswipe</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{
+    --bg:#0d0d12; --bg2:#16161f; --card:#1d1d28; --line:#2a2a38;
+    --txt:#f4f4f7; --muted:#9a9aae; --green:#1ed760; --red:#ff4d6d; --gold:#ffc94d;
+    --radius:22px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;overscroll-behavior:none}
+  body{display:flex;flex-direction:column;min-height:100dvh;padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+  button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+  input{font:inherit}
+  .screen{display:none;flex:1;flex-direction:column;padding:16px;max-width:520px;width:100%;margin:0 auto}
+  .screen.active{display:flex}
+  h1{font-size:28px;margin:8px 0 4px;letter-spacing:-.5px}
+  h2{font-size:20px;margin:18px 0 8px}
+  p{color:var(--muted);line-height:1.45;margin:6px 0}
+  .logo{font-weight:800;font-size:20px;letter-spacing:-.4px}
+  .logo span{color:var(--green)}
+  .btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:14px 18px;border-radius:999px;
+    background:var(--green);color:#06210f;font-weight:700;width:100%;margin-top:12px}
+  .btn.ghost{background:var(--bg2);color:var(--txt);border:1px solid var(--line)}
+  .btn:disabled{opacity:.5}
+  .field{width:100%;padding:13px 14px;border-radius:14px;border:1px solid var(--line);background:var(--bg2);color:var(--txt);margin-top:8px}
+  .code{font-family:ui-monospace,Menlo,monospace;font-size:13px;background:var(--bg2);border:1px solid var(--line);
+    padding:10px 12px;border-radius:12px;word-break:break-all;margin-top:6px;display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .code button{color:var(--green);font-weight:700;flex-shrink:0}
+  ol{color:var(--muted);padding-left:20px;line-height:1.6}
+  ol b{color:var(--txt)}
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+  .iconbtn{width:40px;height:40px;border-radius:50%;background:var(--bg2);border:1px solid var(--line);display:grid;place-items:center;font-size:18px}
+  .list{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+  .item{display:flex;align-items:center;gap:12px;padding:10px;border-radius:16px;background:var(--bg2);border:1px solid var(--line);text-align:left;width:100%}
+  .item img,.item .ph{width:48px;height:48px;border-radius:10px;object-fit:cover;background:var(--card);display:grid;place-items:center;font-size:22px;flex-shrink:0}
+  .item .t{flex:1;min-width:0}
+  .item .t b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .t small{color:var(--muted)}
+  .row{display:flex;gap:8px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{padding:8px 12px;border-radius:999px;background:var(--bg2);border:1px solid var(--line);font-size:14px}
+  .chip.on{background:rgba(30,215,96,.15);border-color:var(--green);color:var(--green)}
+  .muted{color:var(--muted);font-size:13px}
+  .warn{background:rgba(255,201,77,.08);border:1px solid rgba(255,201,77,.35);color:#ffe2a0;padding:10px 12px;border-radius:14px;font-size:13px;line-height:1.45;margin-top:10px}
+
+  /* Deck */
+  #deckScreen{padding-bottom:8px}
+  .moodtitle{flex:1;min-width:0;text-align:center}
+  .moodtitle small{display:block;color:var(--muted);font-size:12px}
+  .moodtitle b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .deck{position:relative;flex:1;min-height:380px;margin:6px 0 10px}
+  .card{position:absolute;inset:0;border-radius:var(--radius);overflow:hidden;background:var(--card);
+    box-shadow:0 20px 50px rgba(0,0,0,.45);touch-action:none;user-select:none;-webkit-user-select:none;
+    display:flex;flex-direction:column;will-change:transform}
+  .card.back{transform:scale(.94) translateY(14px);filter:brightness(.6);transition:transform .3s,filter .3s}
+  .cover{position:relative;flex:1;min-height:0;background:#000}
+  .cover img{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}
+  .cover .shade{position:absolute;inset:auto 0 0 0;height:55%;background:linear-gradient(transparent,rgba(0,0,0,.85))}
+  .badge{position:absolute;top:12px;left:12px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;
+    background:rgba(0,0,0,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);max-width:70%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .badge.disc{background:linear-gradient(135deg,#ffc94d,#ff7ab6);color:#2b1300}
+  .spot{position:absolute;top:12px;right:12px;display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;
+    background:rgba(0,0,0,.55);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-size:12px;font-weight:700;color:#fff;text-decoration:none}
+  .spot svg{width:16px;height:16px}
+  .info{position:absolute;left:0;right:0;bottom:0;padding:16px 18px 18px}
+  .info .name{font-size:24px;font-weight:800;line-height:1.15;letter-spacing:-.3px;text-shadow:0 2px 12px rgba(0,0,0,.5)}
+  .info .artist{font-size:15px;color:#d6d6e0;margin-top:4px}
+  .info .album{font-size:12px;color:#a8a8b8;margin-top:2px}
+  .stamp{position:absolute;top:60px;padding:6px 14px;border:4px solid;border-radius:12px;font-size:30px;font-weight:900;letter-spacing:2px;opacity:0;pointer-events:none}
+  .stamp.like{left:22px;color:var(--green);border-color:var(--green);transform:rotate(-14deg)}
+  .stamp.nope{right:22px;color:var(--red);border-color:var(--red);transform:rotate(14deg)}
+  .player{padding:10px 14px;background:#121219;display:flex;align-items:center;gap:12px}
+  .playbtn{width:46px;height:46px;border-radius:50%;background:#fff;color:#000;display:grid;place-items:center;flex-shrink:0}
+  .playbtn svg{width:20px;height:20px}
+  .bar{flex:1;height:4px;border-radius:4px;background:#2c2c3a;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--green)}
+  .player .lbl{font-size:12px;color:var(--muted);min-width:64px;text-align:right}
+  .embed{width:100%;height:80px;border:0;border-radius:12px;display:block}
+  .empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;border-radius:var(--radius);border:2px dashed var(--line)}
+  .actions{display:flex;justify-content:center;align-items:center;gap:18px;padding-bottom:6px}
+  .act{width:64px;height:64px;border-radius:50%;background:var(--bg2);border:1px solid var(--line);display:grid;place-items:center;transition:transform .12s}
+  .act:active{transform:scale(.9)}
+  .act svg{width:28px;height:28px}
+  .act.small{width:48px;height:48px}
+  .act.small svg{width:20px;height:20px}
+  .act.nope{color:var(--red)} .act.like{color:var(--green)} .act.undo{color:var(--gold)}
+  .burst{position:fixed;left:50%;top:45%;font-size:90px;pointer-events:none;transform:translate(-50%,-50%) scale(.3);opacity:0;z-index:50}
+  .burst.go{animation:burst .7s ease-out forwards}
+  @keyframes burst{0%{opacity:0;transform:translate(-50%,-50%) scale(.3)}30%{opacity:1;transform:translate(-50%,-50%) scale(1.15)}100%{opacity:0;transform:translate(-50%,-90%) scale(1)}}
+  .heart{position:fixed;pointer-events:none;z-index:49;font-size:22px;animation:float 1s ease-out forwards}
+  @keyframes float{to{transform:translate(var(--dx),-160px) rotate(var(--r));opacity:0}}
+  .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(120px);
+    background:#26263a;border:1px solid var(--line);padding:12px 14px;border-radius:14px;display:flex;gap:14px;align-items:center;
+    transition:transform .3s;z-index:60;max-width:92vw;font-size:14px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .toast button{color:var(--green);font-weight:800;white-space:nowrap}
+  .loader{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:14px;text-align:center}
+  .spinner{width:42px;height:42px;border-radius:50%;border:4px solid var(--line);border-top-color:var(--green);animation:spin 1s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;z-index:70;align-items:flex-end;justify-content:center}
+  .sheet.open{display:flex}
+  .sheet .panel{background:var(--bg);border-top-left-radius:24px;border-top-right-radius:24px;max-height:88dvh;overflow:auto;
+    width:100%;max-width:520px;padding:18px 16px calc(24px + env(safe-area-inset-bottom));border:1px solid var(--line)}
+  .switch{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);gap:12px}
+  .switch input{width:22px;height:22px;accent-color:var(--green)}
+  .count{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+
+<!-- SETUP -->
+<section class="screen" id="setupScreen">
+  <div class="logo">mood<span>swipe</span></div>
+  <h1>Configura tu conexión con Spotify</h1>
+  <p>Solo se hace una vez. Así la app puede leer tus playlists y crear las de tus moods.</p>
+  <ol>
+    <li>Entra en <b>developer.spotify.com/dashboard</b> con tu cuenta de Spotify y pulsa <b>Create app</b>.</li>
+    <li>Ponle cualquier nombre (p. ej. Moodswipe) y en <b>Redirect URIs</b> pega esta dirección exacta:</li>
+  </ol>
+  <div class="code"><span id="redirectUri"></span><button id="copyRedirect">Copiar</button></div>
+  <ol start="3">
+    <li>Marca <b>Web API</b> y <b>Web Playback SDK</b>, acepta y guarda.</li>
+    <li>Copia el <b>Client ID</b> de la app y pégalo aquí:</li>
+  </ol>
+  <input class="field" id="clientIdInput" placeholder="Client ID (32 caracteres)" autocomplete="off" autocapitalize="off" spellcheck="false">
+  <button class="btn" id="saveClientId">Guardar y entrar con Spotify</button>
+  <p class="muted" style="margin-top:14px">Tu contraseña nunca pasa por esta app: inicias sesión en la página oficial de Spotify.</p>
+</section>
+
+<!-- LOGIN -->
+<section class="screen" id="loginScreen">
+  <div class="loader">
+    <div class="logo" style="font-size:34px">mood<span>swipe</span></div>
+    <p>Desliza tus canciones y crea playlists para cada mood.</p>
+    <button class="btn" id="loginBtn" style="max-width:320px">Entrar con Spotify</button>
+    <button class="muted" id="resetClient" style="margin-top:6px;text-decoration:underline">Cambiar Client ID</button>
+    <p id="loginError" class="warn" style="display:none"></p>
+  </div>
+</section>
+
+<!-- LOADING -->
+<section class="screen" id="loadingScreen">
+  <div class="loader">
+    <div class="spinner"></div>
+    <b id="loadingTitle">Leyendo tu música…</b>
+    <p id="loadingDetail" class="muted"></p>
+  </div>
+</section>
+
+<!-- MOODS -->
+<section class="screen" id="moodScreen">
+  <div class="topbar">
+    <div class="logo">mood<span>swipe</span></div>
+    <button class="iconbtn" id="openSettings" title="Fuentes y ajustes">⚙️</button>
+  </div>
+  <p id="poolSummary" class="muted"></p>
+  <div id="inaccessibleWarn"></div>
+  <h2>Nuevo mood</h2>
+  <div class="row">
+    <input class="field" id="newMoodName" placeholder="Ej.: 🌙 Chill de noche" maxlength="80" style="margin-top:0">
+  </div>
+  <div class="chips" id="moodSuggestions"></div>
+  <button class="btn" id="createMood">Crear playlist y empezar</button>
+  <h2>Tus moods</h2>
+  <div class="list" id="moodList"></div>
+  <h2>O usa una playlist tuya</h2>
+  <div class="list" id="ownedList"></div>
+</section>
+
+<!-- DECK -->
+<section class="screen" id="deckScreen">
+  <div class="topbar">
+    <button class="iconbtn" id="backToMoods" title="Moods">←</button>
+    <div class="moodtitle"><small>Añadiendo a</small><b id="moodName"></b></div>
+    <div class="iconbtn count" id="addedCount" title="Añadidas">0</div>
+  </div>
+  <div class="deck" id="deck"></div>
+  <div class="actions">
+    <button class="act small undo" id="undoBtn" title="Deshacer">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+    </button>
+    <button class="act nope" id="nopeBtn" title="Descartar">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+    <button class="act like" id="likeBtn" title="Añadir">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s-7.5-4.6-9.6-9.3C.9 8.3 3 4.5 6.6 4.5c2.1 0 3.6 1.2 4.4 2.5.8-1.3 2.3-2.5 4.4-2.5 3.6 0 5.7 3.8 4.2 7.2C19.5 16.4 12 21 12 21z"/></svg>
+    </button>
+    <button class="act small" id="skipBtn" title="Ver después" style="color:var(--muted)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5l8 7-8 7z"/><path d="M19 5v14"/></svg>
+    </button>
+  </div>
+</section>
+
+<!-- SETTINGS SHEET -->
+<div class="sheet" id="settingsSheet">
+  <div class="panel">
+    <div class="topbar"><h2 style="margin:0">Fuentes y ajustes</h2><button class="iconbtn" id="closeSettings">✕</button></div>
+    <div class="switch"><span>❤️ Canciones que te gustan</span><input type="checkbox" data-src="liked"></div>
+    <div class="switch"><span>💿 Álbumes guardados</span><input type="checkbox" data-src="albums"></div>
+    <div class="switch"><span>🔥 Tus más escuchadas</span><input type="checkbox" data-src="top"></div>
+    <div class="switch"><span>🕒 Escuchadas recientemente</span><input type="checkbox" data-src="recent"></div>
+    <div class="switch"><span>✨ Descubrimientos (canciones nuevas para ti)</span><input type="checkbox" data-src="discover"></div>
+    <div class="switch"><span>▶️ Reproducir fragmento automáticamente</span><input type="checkbox" id="autoplayToggle"></div>
+    <h2>Playlists</h2>
+    <p class="muted">Desmarca las que no quieras que salgan.</p>
+    <div id="playlistToggles"></div>
+    <button class="btn" id="reloadPool">Guardar y recargar canciones</button>
+    <button class="btn ghost" id="resetMoodHistory">Volver a mostrar descartadas de este mood</button>
+    <button class="btn ghost" id="logoutBtn">Cerrar sesión</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"><span id="toastMsg"></span><button id="toastAction"></button></div>
+<div class="burst" id="burst"></div>
+
+<script>
+/* =========================================================
+   Moodswipe — PWA sin servidor. Login Spotify con PKCE.
+   Todo el estado se guarda en este navegador (localStorage).
+   ========================================================= */
+const SCOPES = [
+  'playlist-read-private','playlist-read-collaborative','playlist-modify-private','playlist-modify-public',
+  'user-library-read','user-top-read','user-read-recently-played',
+  'streaming','user-read-email','user-read-private','user-read-playback-state','user-modify-playback-state'
+].join(' ');
+const REDIRECT = location.origin + location.pathname;
+const API = 'https://api.spotify.com/v1';
+const DISCOVER_EVERY = 6;          // 1 descubrimiento cada ~6 cartas
+const PREVIEW_MS = 30000;          // duración del fragmento
+const DEFAULT_DISCOVER_ARTISTS = ['Bad Bunny','Quevedo','Rosalía','Myke Towers','Feid','Saiko','Mora','Rauw Alejandro',
+  'Eladio Carrión','Karol G','Young Miko','Bizarrap','Duki','Emilia','Trueno','Morad','Rels B','C. Tangana','Aitana',
+  'Lola Índigo','Dellafuente','Jhayco','Ozuna','Anuel AA','Sech','Tiago PZK','Nicki Nicole','Omar Montes','Ana Mena','Ryan Castro'];
+const MOOD_IDEAS = ['🌙 Chill de noche','🏋️ Gym','🚗 Coche','🎉 Previa','📚 Estudiar','💔 Bajón','☀️ Verano','🔥 Perreo'];
+
+/* ---------- utilidades ---------- */
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const LS = {
+  get(k, d){ try{ const v = localStorage.getItem('ms_'+k); return v == null ? d : JSON.parse(v); }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem('ms_'+k, JSON.stringify(v)); }catch{} },
+  del(k){ try{ localStorage.removeItem('ms_'+k); }catch{} }
+};
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+function show(id){ document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.id === id)); }
+function loading(title, detail=''){ $('#loadingTitle').textContent = title; $('#loadingDetail').textContent = detail; show('loadingScreen'); }
+let toastTimer;
+function toast(msg, actionLabel, action, ms=3500){
+  $('#toastMsg').textContent = msg;
+  const b = $('#toastAction');
+  b.style.display = actionLabel ? '' : 'none';
+  b.textContent = actionLabel || '';
+  b.onclick = () => { hideToast(); action && action(); };
+  $('#toast').classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(hideToast, ms);
+}
+function hideToast(){ $('#toast').classList.remove('show'); }
+
+/* ---------- OAuth PKCE ---------- */
+function randomString(len){
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  return Array.from(crypto.getRandomValues(new Uint8Array(len)), x => chars[x % chars.length]).join('');
+}
+async function codeChallenge(v){
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v));
+  return btoa(String.fromCharCode(...new Uint8Array(d))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function login(){
+  const verifier = randomString(64), state = randomString(16);
+  LS.set('pkce', { verifier, state });
+  const params = new URLSearchParams({
+    response_type:'code', client_id: LS.get('clientId'), scope: SCOPES,
+    code_challenge_method:'S256', code_challenge: await codeChallenge(verifier),
+    redirect_uri: REDIRECT, state
+  });
+  location.href = 'https://accounts.spotify.com/authorize?' + params;
+}
+function saveToken(j){
+  const old = LS.get('token', {});
+  LS.set('token', { access: j.access_token, refresh: j.refresh_token || old.refresh, exp: Date.now() + (j.expires_in - 60) * 1000 });
+}
+async function handleCallback(){
+  const p = new URLSearchParams(location.search);
+  if (!p.has('code') && !p.has('error')) return;
+  history.replaceState({}, '', REDIRECT);
+  if (p.get('error')) throw new Error('Spotify ha rechazado el acceso (' + p.get('error') + ').');
+  const pk = LS.get('pkce');
+  if (!pk || pk.state !== p.get('state')) throw new Error('La sesión de login ha caducado. Vuelve a intentarlo.');
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({ grant_type:'authorization_code', code: p.get('code'), redirect_uri: REDIRECT,
+      client_id: LS.get('clientId'), code_verifier: pk.verifier })
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error('No se pudo obtener el token: ' + (j.error_description || j.error || r.status));
+  saveToken(j); LS.del('pkce');
+}
+async function refreshToken(){
+  const t = LS.get('token');
+  if (!t?.refresh) throw new Error('NOAUTH');
+  const r = await fetch('https://accounts.spotify.com/api/token', {
+    method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({ grant_type:'refresh_token', refresh_token: t.refresh, client_id: LS.get('clientId') })
+  });
+  const j = await r.json();
+  if (!r.ok){ LS.del('token'); throw new Error('NOAUTH'); }
+  saveToken(j);
+}
+async function token(){
+  const t = LS.get('token');
+  if (!t) throw new Error('NOAUTH');
+  if (Date.now() > t.exp) await refreshToken();
+  return LS.get('token').access;
+}
+
+/* ---------- API ---------- */
+async function api(path, opts = {}){
+  const url = path.startsWith('http') ? path : API + path;
+  for (let attempt = 0; attempt < 4; attempt++){
+    const r = await fetch(url, { ...opts, headers: { Authorization: 'Bearer ' + await token(),
+      ...(opts.body ? {'Content-Type':'application/json'} : {}), ...(opts.headers || {}) } });
+    if (r.status === 429){ await sleep(((+r.headers.get('Retry-After')) || 1) * 1000 + 300); continue; }
+    if (r.status === 401 && attempt === 0){ await refreshToken(); continue; }
+    if (!r.ok){ const e = new Error('HTTP ' + r.status); e.status = r.status; try{ e.body = await r.text(); }catch{} throw e; }
+    const txt = await r.text();
+    try{ return txt ? JSON.parse(txt) : null; }catch{ return null; }
+  }
+  throw new Error('Spotify está limitando las peticiones. Espera un poco.');
+}
+async function paged(path, extract, max = 5000){
+  let url = path, out = [];
+  while (url && out.length < max){
+    const j = await api(url);
+    out.push(...extract(j));
+    url = j?.next || null;
+  }
+  return out;
+}
+// Spotify cambió nombres de endpoints en 2026: probamos el nuevo y, si falla, el antiguo.
+async function apiEither(newPath, oldPath, opts){
+  try { return await api(newPath, opts); }
+  catch(e){ if (e.status === 404 || e.status === 403 || e.status === 400 || e.status === 405) return await api(oldPath, opts); throw e; }
+}
+
+function norm(t, source, albumOverride){
+  if (!t || t.is_local || (t.type && t.type !== 'track') || !t.id) return null;
+  const album = albumOverride || t.album || {};
+  const imgs = album.images || [];
+  return {
+    id: t.id, uri: t.uri || ('spotify:track:' + t.id), name: t.name,
+    artists: (t.artists || []).map(a => a.name).join(', '),
+    artistIds: (t.artists || []).map(a => a.id),
+    album: album.name || '', image: (imgs[0] || {}).url || '',
+    url: t.external_urls?.spotify || ('https://open.spotify.com/track/' + t.id),
+    duration: t.duration_ms || 180000, source
+  };
+}
+
+/* ---------- estado ---------- */
+let me = null;
+let pool = [];            // canciones de tus fuentes (únicas)
+let poolIds = new Set();
+let playlists = [];       // todas tus playlists (lista)
+let inaccessible = [];    // playlists que Spotify no deja leer
+let target = null;        // {id, name, image}
+let deck = [];            // cola de cartas
+let decided = new Set();  // ids ya decididos para este mood
+let history_ = [];        // para deshacer
+let sinceDiscover = 0;
+let discoverBuffer = [];
+let discoverArtists = [];
+let addedThisMood = 0;
+
+const sources = Object.assign({ liked:true, albums:true, top:true, recent:true, discover:true }, LS.get('sources', {}));
+let disabledPlaylists = new Set(LS.get('disabledPlaylists', []));
+let autoplay = LS.get('autoplay', false);
+
+/* ---------- carga de canciones ---------- */
+async function loadPool(force = false){
+  const cached = LS.get('poolCache');
+  if (!force && cached && Date.now() - cached.ts < 6 * 3600 * 1000 && cached.user === me.id){
+    pool = cached.pool; playlists = cached.playlists; inaccessible = cached.inaccessible;
+    poolIds = new Set(pool.map(t => t.id));
+    return;
+  }
+  const map = new Map();
+  const add = (t) => { if (t && !map.has(t.id)) map.set(t.id, t); };
+  inaccessible = [];
+
+  loading('Leyendo tus playlists…');
+  playlists = await paged('/me/playlists?limit=50', j => (j.items || []).filter(Boolean).map(p => ({
+    id: p.id, name: p.name, owner: p.owner?.id, ownerName: p.owner?.display_name,
+    image: (p.images || [])[0]?.url || '', collaborative: p.collaborative,
+    total: p.items?.total ?? p.tracks?.total ?? 0
+  })));
+
+  let i = 0;
+  for (const p of playlists){
+    i++;
+    if (disabledPlaylists.has(p.id)) continue;
+    loading('Leyendo tus playlists…', `${i}/${playlists.length} · ${p.name}`);
+    try{
+      const extract = j => (j.items || []).map(x => norm(x.item || x.track, p.name));
+      let tracks;
+      try { tracks = await paged(`/playlists/${p.id}/items?limit=50`, extract, 1500); }
+      catch(e){ tracks = await paged(`/playlists/${p.id}/tracks?limit=50`, extract, 1500); }
+      tracks.forEach(add);
+      if (!tracks.length && p.total > 0) inaccessible.push(p.name);
+    }catch(e){ inaccessible.push(p.name); }
+  }
+
+  if (sources.liked){
+    loading('Leyendo tus canciones que te gustan…');
+    try{ (await paged('/me/tracks?limit=50', j => (j.items||[]).map(x => norm(x.track, '❤️ Te gusta')), 3000)).forEach(add); }
+    catch(e){ console.warn('liked', e); }
+  }
+  if (sources.albums){
+    loading('Leyendo tus álbumes guardados…');
+    try{
+      (await paged('/me/albums?limit=50', j => (j.items||[]).flatMap(x =>
+        (x.album?.tracks?.items || []).map(t => norm(t, '💿 ' + x.album.name, x.album))), 3000)).forEach(add);
+    }catch(e){ console.warn('albums', e); }
+  }
+  if (sources.top){
+    loading('Leyendo tus más escuchadas…');
+    for (const range of ['short_term','medium_term','long_term']){
+      try{ ((await api(`/me/top/tracks?limit=50&time_range=${range}`))?.items || []).map(t => norm(t, '🔥 Tus más escuchadas')).forEach(add); }
+      catch(e){ console.warn('top', e); }
+    }
+  }
+  if (sources.recent){
+    try{ ((await api('/me/player/recently-played?limit=50'))?.items || []).map(x => norm(x.track, '🕒 Escuchada hace poco')).forEach(add); }
+    catch(e){ console.warn('recent', e); }
+  }
+
+  pool = [...map.values()].filter(Boolean);
+  poolIds = new Set(pool.map(t => t.id));
+  const cache = { ts: Date.now(), user: me.id, pool, playlists, inaccessible };
+  LS.del('poolCache');
+  LS.set('poolCache', cache); // si no cabe en el navegador, simplemente no se guarda en caché
+}
+
+/* ---------- descubrimientos ---------- */
+async function prepareDiscoverArtists(){
+  let names = [];
+  try{ names = ((await api('/me/top/artists?limit=30&time_range=medium_term'))?.items || []).map(a => a.name); }catch{}
+  // Mezcla: artistas que ya escuchas (otras canciones suyas) + artistas sugeridos
+  discoverArtists = shuffle([...new Set([...names, ...DEFAULT_DISCOVER_ARTISTS])]);
+}
+async function refillDiscover(){
+  if (!sources.discover || !discoverArtists.length) return;
+  for (let k = 0; k < 3 && discoverBuffer.length < 6; k++){
+    const name = discoverArtists[Math.floor(Math.random() * discoverArtists.length)];
+    const offset = Math.floor(Math.random() * 30);
+    try{
+      const j = await api(`/search?type=track&limit=10&offset=${offset}&q=${encodeURIComponent('artist:"' + name + '"')}`);
+      const cands = (j?.tracks?.items || []).map(t => norm(t, '✨ Descubrimiento'))
+        .filter(t => t && !poolIds.has(t.id) && !decided.has(t.id) && !deck.some(d => d.id === t.id) && !discoverBuffer.some(d => d.id === t.id));
+      if (cands.length) discoverBuffer.push(cands[Math.floor(Math.random() * cands.length)]);
+    }catch(e){ console.warn('discover', e); }
+  }
+}
+
+/* ---------- moods ---------- */
+function getMoods(){ return LS.get('moods_' + me.id, []); }
+function saveMoods(m){ LS.set('moods_' + me.id, m); }
+
+function renderMoods(){
+  $('#poolSummary').textContent = `${pool.length.toLocaleString('es-ES')} canciones de tus fuentes · hola, ${me.display_name || me.id}`;
+  const warn = $('#inaccessibleWarn');
+  warn.innerHTML = inaccessible.length ? `<div class="warn"><b>Spotify no deja leer ${inaccessible.length} playlist(s)</b> porque no son tuyas (son de Spotify o de otra persona): ${esc(inaccessible.slice(0,6).join(', '))}${inaccessible.length>6?'…':''}.<br>Truco: ábrelas en Spotify, selecciona todas las canciones y usa «Añadir a playlist» → nueva playlist. Esa copia ya es tuya y saldrá aquí.</div>` : '';
+  $('#moodSuggestions').innerHTML = MOOD_IDEAS.map(m => `<button class="chip">${esc(m)}</button>`).join('');
+  $('#moodSuggestions').querySelectorAll('.chip').forEach(c => c.onclick = () => { $('#newMoodName').value = c.textContent; });
+  const moods = getMoods();
+  $('#moodList').innerHTML = moods.length ? moods.map(m => `
+    <button class="item" data-id="${esc(m.id)}">
+      <div class="ph">🎧</div>
+      <div class="t"><b>${esc(m.name)}</b><small>${(LS.get('decided_'+m.id, [])).length} decididas</small></div><span>›</span>
+    </button>`).join('') : '<p class="muted">Aún no has creado ninguno.</p>';
+  $('#moodList').querySelectorAll('.item').forEach(b => b.onclick = () => {
+    const m = getMoods().find(x => x.id === b.dataset.id); startMood(m);
+  });
+  const owned = playlists.filter(p => p.owner === me.id && !moods.some(m => m.id === p.id));
+  $('#ownedList').innerHTML = owned.map(p => `
+    <button class="item" data-id="${esc(p.id)}">
+      ${p.image ? `<img src="${esc(p.image)}" alt="">` : '<div class="ph">🎵</div>'}
+      <div class="t"><b>${esc(p.name)}</b><small>${p.total} canciones</small></div><span>›</span>
+    </button>`).join('') || '<p class="muted">No hay más playlists tuyas.</p>';
+  $('#ownedList').querySelectorAll('.item').forEach(b => b.onclick = () => {
+    const p = playlists.find(x => x.id === b.dataset.id); startMood({ id: p.id, name: p.name });
+  });
+  show('moodScreen');
+}
+
+async function createMood(){
+  const name = $('#newMoodName').value.trim();
+  if (!name){ toast('Ponle un nombre a tu mood'); return; }
+  $('#createMood').disabled = true;
+  try{
+    const body = JSON.stringify({ name, public: false, description: 'Creada con Moodswipe' });
+    const p = await apiEither('/me/playlists', `/users/${encodeURIComponent(me.id)}/playlists`, { method:'POST', body });
+    const m = { id: p.id, name: p.name };
+    saveMoods([m, ...getMoods()]);
+    $('#newMoodName').value = '';
+    startMood(m);
+  }catch(e){ toast('No se pudo crear la playlist (' + (e.status || e.message) + ')'); }
+  finally{ $('#createMood').disabled = false; }
+}
+
+async function startMood(m){
+  target = m;
+  if (!getMoods().some(x => x.id === m.id)) saveMoods([m, ...getMoods()]);
+  loading('Preparando tu mazo…', m.name);
+  decided = new Set(LS.get('decided_' + m.id, []));
+  // No mostrar las que ya están en la playlist destino
+  try{
+    const extract = j => (j.items || []).map(x => (x.item || x.track)?.id).filter(Boolean);
+    let ids;
+    try { ids = await paged(`/playlists/${m.id}/items?limit=50`, extract, 5000); }
+    catch { ids = await paged(`/playlists/${m.id}/tracks?limit=50`, extract, 5000); }
+    ids.forEach(id => decided.add(id));
+    addedThisMood = ids.length;
+  }catch{ addedThisMood = 0; }
+  deck = shuffle(pool.filter(t => !decided.has(t.id)));
+  history_ = []; sinceDiscover = 0; discoverBuffer = [];
+  if (sources.discover && !discoverArtists.length) await prepareDiscoverArtists();
+  refillDiscover();
+  $('#moodName').textContent = m.name;
+  $('#addedCount').textContent = addedThisMood;
+  show('deckScreen');
+  renderDeck();
+}
+
+/* ---------- mazo ---------- */
+function nextCards(){
+  // inserta un descubrimiento cada DISCOVER_EVERY cartas
+  if (sources.discover && sinceDiscover >= DISCOVER_EVERY && discoverBuffer.length){
+    deck.unshift(discoverBuffer.shift()); sinceDiscover = 0;
+  }
+  if (discoverBuffer.length < 3) refillDiscover();
+  return deck.slice(0, 2);
+}
+
+const SPOTIFY_ICON = '<svg viewBox="0 0 24 24" fill="#1ed760"><circle cx="12" cy="12" r="11"/><path d="M7 9.5c3.5-1 7.3-.7 10.2.9M7.6 12.6c2.9-.8 6-.5 8.4.8M8.3 15.5c2.3-.6 4.6-.4 6.5.6" stroke="#000" stroke-width="1.7" stroke-linecap="round" fill="none"/></svg>';
+const PLAY_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></svg>';
+const PAUSE_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></svg>';
+
+function cardHTML(t, back){
+  const disc = t.source === '✨ Descubrimiento';
+  return `<div class="card${back ? ' back' : ''}" data-id="${esc(t.id)}">
+    <div class="cover">
+      ${t.image ? `<img src="${esc(t.image)}" alt="Portada de ${esc(t.album)}" draggable="false">` : ''}
+      <div class="shade"></div>
+      <div class="badge${disc ? ' disc' : ''}">${disc ? '✨ Nueva para ti' : 'De: ' + esc(t.source)}</div>
+      <a class="spot" href="${esc(t.url)}" target="_blank" rel="noopener">${SPOTIFY_ICON}Abrir</a>
+      <div class="stamp like">ME GUSTA</div><div class="stamp nope">FUERA</div>
+      <div class="info">
+        <div class="name">${esc(t.name)}</div>
+        <div class="artist">${esc(t.artists)}</div>
+        ${t.album ? `<div class="album">${esc(t.album)}</div>` : ''}
+      </div>
+    </div>
+    <div class="player">
+      <button class="playbtn" aria-label="Escuchar fragmento">${PLAY_ICON}</button>
+      <div class="bar"><i></i></div>
+      <span class="lbl">Fragmento</span>
+    </div>
+  </div>`;
+}
+
+function renderDeck(){
+  const el = $('#deck');
+  const cards = nextCards();
+  if (!cards.length){
+    el.innerHTML = `<div class="empty"><div style="font-size:48px">🎉</div><h2>¡Has visto todas!</h2>
+      <p>Ya has decidido todas las canciones de tus fuentes para este mood.</p>
+      <button class="btn" id="moreDisc">Seguir con descubrimientos</button></div>`;
+    $('#moreDisc').onclick = async () => { sources.discover = true; discoverBuffer = []; await refillDiscover(); deck.push(...discoverBuffer.splice(0)); renderDeck(); };
+    return;
+  }
+  el.innerHTML = (cards[1] ? cardHTML(cards[1], true) : '') + cardHTML(cards[0], false);
+  const top = el.querySelector('.card:not(.back)');
+  bindCard(top, cards[0]);
+  if (autoplay) playPreview(cards[0], top);
+}
+
+function bindCard(card, t){
+  let sx = 0, sy = 0, dx = 0, dy = 0, dragging = false;
+  const like = card.querySelector('.stamp.like'), nope = card.querySelector('.stamp.nope');
+  card.querySelector('.playbtn').onclick = (e) => { e.stopPropagation(); togglePreview(t, card); };
+  card.addEventListener('pointerdown', e => {
+    if (e.target.closest('button,a,iframe')) return;
+    dragging = true; sx = e.clientX; sy = e.clientY; dx = dy = 0;
+    card.setPointerCapture(e.pointerId); card.style.transition = 'none';
+  });
+  card.addEventListener('pointermove', e => {
+    if (!dragging) return;
+    dx = e.clientX - sx; dy = e.clientY - sy;
+    card.style.transform = `translate(${dx}px, ${dy * .4}px) rotate(${dx / 14}deg)`;
+    like.style.opacity = Math.max(0, Math.min(1, dx / 100));
+    nope.style.opacity = Math.max(0, Math.min(1, -dx / 100));
+  });
+  const end = () => {
+    if (!dragging) return; dragging = false;
+    if (dx > 110) decide('like', dy);
+    else if (dx < -110) decide('nope', dy);
+    else { card.style.transition = 'transform .35s cubic-bezier(.2,1.4,.4,1)'; card.style.transform = ''; like.style.opacity = nope.style.opacity = 0; }
+  };
+  card.addEventListener('pointerup', end);
+  card.addEventListener('pointercancel', end);
+}
+
+let busy = false;
+async function decide(dir, dy = 0){
+  if (busy) return;
+  const card = $('#deck .card:not(.back)');
+  const t = deck[0];
+  if (!card || !t) return;
+  busy = true;
+  stopPreview();
+  if (dir === 'skip'){
+    deck.push(deck.shift());
+    fly(card, 0, -1); await sleep(300); busy = false; renderDeck(); return;
+  }
+  const like = dir === 'like';
+  card.querySelector('.stamp.' + (like ? 'like' : 'nope')).style.opacity = 1;
+  fly(card, like ? 1 : -1, dy);
+  navigator.vibrate?.(like ? [12, 40, 12] : 15);
+  if (like) celebrate(); else burst('💨');
+  deck.shift();
+  sinceDiscover++;
+  decided.add(t.id);
+  LS.set('decided_' + target.id, [...decided]);
+  history_.push({ t, dir });
+  await sleep(260);
+  busy = false;
+  renderDeck();
+  if (like){
+    try{
+      await apiEither(`/playlists/${target.id}/items`, `/playlists/${target.id}/tracks`,
+        { method:'POST', body: JSON.stringify({ uris: [t.uri] }) });
+      addedThisMood++; $('#addedCount').textContent = addedThisMood;
+      toast(`Añadida a ${target.name}`, 'Deshacer', undo, 2500);
+    }catch(e){
+      toast('No se pudo añadir (' + (e.status || e.message) + ')', 'Reintentar', () => retryAdd(t));
+    }
+  } else {
+    toast('Descartada para este mood (no se borra de tus playlists)', 'Mejor añadirla', undoAndLike, 3000);
+  }
+}
+async function retryAdd(t){
+  try{ await apiEither(`/playlists/${target.id}/items`, `/playlists/${target.id}/tracks`, { method:'POST', body: JSON.stringify({ uris:[t.uri] }) });
+    addedThisMood++; $('#addedCount').textContent = addedThisMood; toast('Añadida ✅'); }
+  catch(e){ toast('Sigue fallando (' + (e.status || e.message) + ')'); }
+}
+function fly(card, dir, dy){
+  card.style.transition = 'transform .4s ease-in, opacity .4s ease-in';
+  card.style.transform = dir === 0 ? 'translateY(-120vh) scale(.9)' : `translate(${dir * 150}vw, ${dy * .4 + 40}px) rotate(${dir * 35}deg)`;
+  card.style.opacity = '0';
+}
+function burst(emoji){
+  const b = $('#burst'); b.textContent = emoji; b.classList.remove('go'); void b.offsetWidth; b.classList.add('go');
+}
+function celebrate(){
+  burst('💚');
+  const em = ['💚','🎵','✨','💚','🎶'];
+  for (let i = 0; i < 10; i++){
+    const h = document.createElement('div'); h.className = 'heart';
+    h.textContent = em[i % em.length];
+    h.style.left = (40 + Math.random() * 20) + 'vw'; h.style.top = '55vh';
+    h.style.setProperty('--dx', (Math.random() * 200 - 100) + 'px');
+    h.style.setProperty('--r', (Math.random() * 60 - 30) + 'deg');
+    h.style.animationDelay = (Math.random() * .15) + 's';
+    document.body.appendChild(h); setTimeout(() => h.remove(), 1300);
+  }
+}
+async function undo(){
+  const last = history_.pop();
+  if (!last){ toast('Nada que deshacer'); return; }
+  stopPreview();
+  decided.delete(last.t.id); LS.set('decided_' + target.id, [...decided]);
+  deck.unshift(last.t);
+  if (last.dir === 'like'){
+    try{
+      await apiEither(`/playlists/${target.id}/items`, `/playlists/${target.id}/tracks`,
+        { method:'DELETE', body: JSON.stringify({ items: [{ uri: last.t.uri }], tracks: [{ uri: last.t.uri }] }) });
+      addedThisMood = Math.max(0, addedThisMood - 1); $('#addedCount').textContent = addedThisMood;
+    }catch(e){ toast('No se pudo quitar de la playlist (' + (e.status || e.message) + ')'); }
+  }
+  renderDeck();
+}
+async function undoAndLike(){
+  const last = history_[history_.length - 1];
+  if (!last || last.dir !== 'nope') return;
+  await undo();
+  setTimeout(() => decide('like'), 150);
+}
+
+/* ---------- audio: fragmento ----------
+   1) Navegador de ordenador: Web Playback SDK (suena aquí mismo, Premium).
+   2) Móvil: Spotify Connect → suena en tu app de Spotify abierta.
+   3) Si no hay dispositivo: reproductor incrustado de Spotify en la carta. */
+let sdkPlayer = null, sdkDeviceId = null, playing = null, previewTimer = null, progressTimer = null;
+window.onSpotifyWebPlaybackSDKReady = () => {
+  try{
+    sdkPlayer = new Spotify.Player({ name: 'Moodswipe', getOAuthToken: cb => token().then(cb).catch(()=>{}), volume: 0.8 });
+    sdkPlayer.addListener('ready', ({ device_id }) => { sdkDeviceId = device_id; });
+    sdkPlayer.addListener('not_ready', () => { sdkDeviceId = null; });
+    ['initialization_error','authentication_error','account_error'].forEach(ev => sdkPlayer.addListener(ev, e => { console.warn(ev, e); sdkDeviceId = null; }));
+    sdkPlayer.connect();
+  }catch(e){ console.warn('sdk', e); }
+};
+function loadSDK(){
+  if (document.getElementById('sdkScript')) return;
+  const s = document.createElement('script'); s.id = 'sdkScript'; s.src = 'https://sdk.scdn.co/spotify-player.js'; s.async = true;
+  document.head.appendChild(s);
+}
+function togglePreview(t, card){
+  if (playing && playing.id === t.id) stopPreview(); else playPreview(t, card);
+}
+async function playPreview(t, card){
+  stopPreview();
+  const btn = card.querySelector('.playbtn'), lbl = card.querySelector('.lbl'), bar = card.querySelector('.bar i');
+  const start = Math.min(45000, Math.max(0, Math.round(t.duration * 0.3)));
+  lbl.textContent = 'Cargando…';
+  let device = null;
+  try{
+    if (sdkPlayer?.activateElement) await sdkPlayer.activateElement();
+    if (sdkDeviceId) device = sdkDeviceId;
+    else {
+      const d = await api('/me/player/devices');
+      const list = d?.devices || [];
+      device = (list.find(x => x.is_active) || list.find(x => x.type === 'Smartphone') || list[0])?.id || null;
+    }
+    if (!device) throw new Error('NODEVICE');
+    await api('/me/player/play?device_id=' + encodeURIComponent(device), { method:'PUT', body: JSON.stringify({ uris:[t.uri], position_ms: start }) });
+  }catch(e){
+    // Plan C: reproductor incrustado
+    card.querySelector('.player').innerHTML = `<iframe class="embed" src="https://open.spotify.com/embed/track/${encodeURIComponent(t.id)}?theme=0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
+    if (e.message === 'NODEVICE') toast('Abre la app de Spotify en el móvil para oír el fragmento desde el estribillo', null, null, 4000);
+    return;
+  }
+  playing = { id: t.id, device };
+  btn.innerHTML = PAUSE_ICON; lbl.textContent = device === sdkDeviceId ? 'Sonando aquí' : 'En tu Spotify';
+  const t0 = Date.now();
+  progressTimer = setInterval(() => { bar.style.width = Math.min(100, (Date.now() - t0) / PREVIEW_MS * 100) + '%'; }, 200);
+  previewTimer = setTimeout(stopPreview, PREVIEW_MS);
+}
+function stopPreview(){
+  clearTimeout(previewTimer); clearInterval(progressTimer);
+  if (playing){
+    const dev = playing.device; playing = null;
+    api('/me/player/pause?device_id=' + encodeURIComponent(dev), { method:'PUT' }).catch(() => {});
+  }
+  const card = $('#deck .card:not(.back)');
+  if (card){ const b = card.querySelector('.playbtn'); if (b){ b.innerHTML = PLAY_ICON; card.querySelector('.lbl').textContent = 'Fragmento'; card.querySelector('.bar i').style.width = '0'; } }
+}
+
+/* ---------- ajustes ---------- */
+function openSettings(){
+  document.querySelectorAll('[data-src]').forEach(c => c.checked = !!sources[c.dataset.src]);
+  $('#autoplayToggle').checked = autoplay;
+  $('#playlistToggles').innerHTML = playlists.map(p => `
+    <div class="switch"><span>${esc(p.name)}<br><small class="muted">${p.owner === me.id ? 'Tuya' : 'De ' + esc(p.ownerName || p.owner)}${inaccessible.includes(p.name) ? ' · Spotify no deja leerla' : ''}</small></span>
+    <input type="checkbox" data-pl="${esc(p.id)}" ${disabledPlaylists.has(p.id) ? '' : 'checked'}></div>`).join('');
+  $('#resetMoodHistory').style.display = target ? '' : 'none';
+  $('#settingsSheet').classList.add('open');
+}
+function readSettings(){
+  document.querySelectorAll('[data-src]').forEach(c => sources[c.dataset.src] = c.checked);
+  LS.set('sources', sources);
+  autoplay = $('#autoplayToggle').checked; LS.set('autoplay', autoplay);
+  disabledPlaylists = new Set([...document.querySelectorAll('[data-pl]')].filter(c => !c.checked).map(c => c.dataset.pl));
+  LS.set('disabledPlaylists', [...disabledPlaylists]);
+}
+
+/* ---------- arranque ---------- */
+async function boot(){
+  $('#redirectUri').textContent = REDIRECT;
+  if (!LS.get('clientId')){ show('setupScreen'); return; }
+  try{ await handleCallback(); }
+  catch(e){ show('loginScreen'); const le = $('#loginError'); le.textContent = e.message; le.style.display = ''; return; }
+  if (!LS.get('token')){ show('loginScreen'); return; }
+  try{
+    loading('Conectando con Spotify…');
+    me = await api('/me');
+    loadSDK();
+    await loadPool();
+    renderMoods();
+  }catch(e){
+    console.error(e);
+    show('loginScreen');
+    const le = $('#loginError');
+    le.innerHTML = e.message === 'NOAUTH' ? 'Tu sesión ha caducado. Vuelve a entrar.'
+      : e.status === 403 ? 'Spotify ha devuelto 403. Revisa en el dashboard de tu app → <b>User Management</b> que tu correo de Spotify está añadido, y que tienes Premium activo.'
+      : 'Error: ' + esc(e.message);
+    le.style.display = '';
+  }
+}
+
+$('#copyRedirect').onclick = () => { navigator.clipboard?.writeText(REDIRECT); toast('Copiado'); };
+$('#saveClientId').onclick = () => {
+  const v = $('#clientIdInput').value.trim();
+  if (!/^[a-f0-9]{32}$/i.test(v)){ toast('El Client ID son 32 letras/números'); return; }
+  LS.set('clientId', v); login();
+};
+$('#loginBtn').onclick = login;
+$('#resetClient').onclick = () => { LS.del('clientId'); LS.del('token'); show('setupScreen'); };
+$('#createMood').onclick = createMood;
+$('#newMoodName').addEventListener('keydown', e => { if (e.key === 'Enter') createMood(); });
+$('#likeBtn').onclick = () => decide('like');
+$('#nopeBtn').onclick = () => decide('nope');
+$('#skipBtn').onclick = () => decide('skip');
+$('#undoBtn').onclick = undo;
+$('#backToMoods').onclick = () => { stopPreview(); target = null; renderMoods(); };
+$('#openSettings').onclick = openSettings;
+$('#closeSettings').onclick = () => { readSettings(); $('#settingsSheet').classList.remove('open'); };
+$('#settingsSheet').onclick = e => { if (e.target.id === 'settingsSheet') $('#closeSettings').click(); };
+$('#reloadPool').onclick = async () => {
+  readSettings(); $('#settingsSheet').classList.remove('open'); stopPreview();
+  try{ await loadPool(true); if (target) await startMood(target); else renderMoods(); }
+  catch(e){ toast('Error recargando: ' + (e.status || e.message)); renderMoods(); }
+};
+$('#resetMoodHistory').onclick = async () => {
+  if (!target) return;
+  LS.set('decided_' + target.id, []); $('#settingsSheet').classList.remove('open'); await startMood(target);
+};
+$('#logoutBtn').onclick = () => { LS.del('token'); LS.del('poolCache'); location.reload(); };
+document.addEventListener('keydown', e => {
+  if (!$('#deckScreen').classList.contains('active') || e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowRight') decide('like');
+  if (e.key === 'ArrowLeft') decide('nope');
+  if (e.key === ' '){ e.preventDefault(); const c = $('#deck .card:not(.back)'); if (c && deck[0]) togglePreview(deck[0], c); }
+});
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+boot();
+</script>
+</body>
+</html>
